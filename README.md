@@ -6,6 +6,12 @@
 - **1v1** – create a room, send the 4-letter code to a mate, same secret word, 6 guesses each, first to solve wins.
 - **Works on phones** – just open the site in Safari / Chrome. Use "Add to Home Screen" for a full-screen app feel.
 
+## Scoring
+- Solve in 1 to 6 guesses = 6 down to 1 points (7 minus your guesses). Not solved = 0.
+- Speed bonus, timed from your first letter to the solving guess: under 30s +3, under 60s +2, under 2 min +1.
+- Winning a 1v1 gives +3 extra.
+- The scoreboard ranks by points, and also shows solved/played, average guesses per solve and 1v1 wins/duels.
+
 ## Play locally
 Open `index.html` in a browser. Without setup, the game works but scores are only stored on your device and 1v1 is off.
 

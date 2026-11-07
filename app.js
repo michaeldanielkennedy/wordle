@@ -124,9 +124,15 @@ function press(k) {
   if (!g || g.over || busy) return;
   if (k === "enter") return submit();
   if (k === "back") g.cur = g.cur.slice(0, -1);
-  else if (/^[a-z]$/.test(k) && g.cur.length < COLS) g.cur += k;
+  else if (/^[a-z]$/.test(k) && g.cur.length < COLS) { g.cur += k; if (!g.start) g.start = Date.now(); }
   renderCurrent();
 }
+
+/* Scoring: (7 - guesses) so 6 for a first-guess solve down to 1, plus a speed bonus.
+   Timer runs from your first letter to the guess that solves it. +3 more for winning a 1v1. */
+const DUEL_BONUS = 3;
+function speedBonus(secs) { return secs < 30 ? 3 : secs < 60 ? 2 : secs < 120 ? 1 : 0; }
+function scoreFor(guesses, secs) { return { base: ROWS + 1 - guesses, bonus: speedBonus(secs) }; }
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || document.activeElement.tagName === "INPUT" || $("#name-dialog").open) return;
   if ($("#view-game").hidden) return;
@@ -140,6 +146,7 @@ async function submit() {
   if (g.cur.length < COLS) { shake(row); return toast("Not enough letters"); }
   if (!VALID.has(g.cur)) { shake(row); return toast("Not in word list"); }
   const guess = g.cur, res = evaluate(guess, g.target);
+  g.secs = (Date.now() - (g.start || Date.now())) / 1000;
   g.guesses.push({ guess, res }); g.cur = ""; busy = true;
   [...row.children].forEach((t, i) => {
     t.style.animationDelay = i * 0.25 + "s"; t.classList.add("flip");
@@ -157,32 +164,38 @@ function shake(row) { row.classList.remove("shake"); void row.offsetWidth; row.c
 async function finish(won) {
   if (g.over) return;
   g.over = true;
-  if (g.mode === "solo") {
-    toast(won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][g.guesses.length - 1] : g.target.toUpperCase(), 3000);
-    $("#after").hidden = false;
-    await recordResult(won, false);
-  } else {
-    if (won) toast("Solved it!"); else toast(g.target.toUpperCase(), 3000);
-    await recordResult(won, true);
+  const n = g.guesses.length;
+  let pts = 0, msg = g.target.toUpperCase();
+  if (won) {
+    const s = scoreFor(n, g.secs); pts = s.base + s.bonus;
+    const praise = ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][n - 1];
+    msg = `${praise} +${pts} pts` + (s.bonus ? ` (${s.base} + ${s.bonus} speed, ${Math.round(g.secs)}s)` : ` (${Math.round(g.secs)}s)`);
   }
+  toast(msg, 3500);
+  if (g.mode === "solo") $("#after").hidden = false;
+  await recordResult(won, pts, n);
 }
 
 /* ---------- scores ---------- */
-async function recordResult(solved, duel) {
+async function recordResult(solved, pts, guesses) {
   const name = await ensureName(); if (!name) return;
   // local copy always kept
-  const mine = store.get("local-score", { name, wins: 0, played: 0 });
-  mine.name = name; mine.played++; if (solved) mine.wins++;
+  const mine = store.get("local-score", { name, wins: 0, played: 0, points: 0, guessTotal: 0 });
+  mine.name = name; mine.played++;
+  if (solved) { mine.wins++; mine.points = (mine.points || 0) + pts; mine.guessTotal = (mine.guessTotal || 0) + guesses; }
   store.set("local-score", mine);
   if (!ONLINE) return;
   const patch = { name, played: INC };
-  if (solved) patch.wins = INC;
-  try { await db("PATCH", `scores/${keyOf(name)}`, patch); if (solved) toast("Win saved to scoreboard ✔"); }
+  if (solved) { patch.wins = INC; patch.points = inc(pts); patch.guessTotal = inc(guesses); }
+  try { await db("PATCH", `scores/${keyOf(name)}`, patch); if (solved) toast(`+${pts} pts saved to scoreboard ✔`); }
   catch { toast("Couldn't reach scoreboard"); }
 }
+const inc = (n) => ({ ".sv": { increment: n } });
 async function recordDuelWin() {
+  const mine = store.get("local-score", null);
+  if (mine) { mine.points = (mine.points || 0) + DUEL_BONUS; mine.duelWins = (mine.duelWins || 0) + 1; mine.duels = (mine.duels || 0) + 1; store.set("local-score", mine); }
   if (!ONLINE) return;
-  try { await db("PATCH", `scores/${keyOf(playerName)}`, { name: playerName, duelWins: INC, duels: INC }); } catch {}
+  try { await db("PATCH", `scores/${keyOf(playerName)}`, { name: playerName, duelWins: INC, duels: INC, points: inc(DUEL_BONUS) }); } catch {}
 }
 async function recordDuelLoss() {
   if (!ONLINE) return;
@@ -199,14 +212,17 @@ async function loadScores() {
     try { const all = (await db("GET", "scores")) || {}; rows = Object.values(all); }
     catch { note.textContent = "Couldn't load scores. Check your connection."; rows = []; }
   }
-  rows.forEach((r) => { r.wins = r.wins || 0; r.played = r.played || 0; r.duelWins = r.duelWins || 0; r.duels = r.duels || 0; });
-  rows.sort((a, b) => b.wins - a.wins || b.duelWins - a.duelWins || a.played - b.played);
-  tbl.innerHTML = "<tr><th>#</th><th>Name</th><th>Solved</th><th>Played</th><th>1v1 W</th></tr>";
-  if (!rows.length) tbl.innerHTML += '<tr><td colspan="5" class="muted" style="text-align:center">No scores yet. Go win something!</td></tr>';
+  rows.forEach((r) => {
+    r.wins = r.wins || 0; r.played = r.played || 0; r.duelWins = r.duelWins || 0; r.duels = r.duels || 0;
+    r.points = r.points || 0; r.avg = r.wins && r.guessTotal ? r.guessTotal / r.wins : null;
+  });
+  rows.sort((a, b) => b.points - a.points || b.wins - a.wins || (a.avg ?? 99) - (b.avg ?? 99));
+  tbl.innerHTML = "<tr><th>#</th><th>Name</th><th>Pts</th><th>Solved</th><th>Avg</th><th>1v1 W</th></tr>";
+  if (!rows.length) tbl.innerHTML += '<tr><td colspan="6" class="muted" style="text-align:center">No scores yet. Go win something!</td></tr>';
   rows.forEach((r, i) => {
     const tr = document.createElement("tr");
     if (playerName && keyOf(r.name || "") === keyOf(playerName)) tr.className = "me";
-    [i + 1, r.name || "?", r.wins, r.played, `${r.duelWins}/${r.duels}`].forEach((v) => {
+    [i + 1, r.name || "?", r.points, `${r.wins}/${r.played}`, r.avg ? r.avg.toFixed(1) : "-", `${r.duelWins}/${r.duels}`].forEach((v) => {
       const td = document.createElement("td"); td.textContent = v; if (tr.className) td.className = "me"; tr.appendChild(td);
     });
     tbl.appendChild(tr);
