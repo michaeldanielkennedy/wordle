@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "scores": {
+      ".read": true,
+      "$player": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['name']) || data.exists()"
+      }
+    },
+    "rooms": {
+      "$room": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}

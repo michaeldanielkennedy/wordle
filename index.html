@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121213">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wordle">
+<title>Wordle with Mates</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>WORDLE</h1>
+  <nav>
+    <button data-view="game" class="active">Play</button>
+    <button data-view="duel">1v1</button>
+    <button data-view="scores">Scores</button>
+  </nav>
+  <button id="who" title="Change name"></button>
+</header>
+
+<div id="toast" role="status"></div>
+
+<main>
+  <section id="view-game">
+    <div id="banner" hidden></div>
+    <div id="boards">
+      <div id="board" aria-label="Your board"></div>
+      <div id="opp-wrap" hidden>
+        <div id="opp-name"></div>
+        <div id="opp-board"></div>
+      </div>
+    </div>
+    <div id="keyboard"></div>
+    <div id="after" hidden>
+      <button id="again" class="primary">Play again</button>
+    </div>
+  </section>
+
+  <section id="view-duel" hidden>
+    <h2>1v1 duel</h2>
+    <p class="muted">Same secret word, 5 guesses each. First to solve it wins. You only see the colours of your mate's guesses, not the letters.</p>
+    <button id="create-room" class="primary">Create a room</button>
+    <div class="or">or join a mate</div>
+    <form id="join-form">
+      <input id="room-code" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="primary">Join</button>
+    </form>
+    <p id="duel-msg" class="muted"></p>
+  </section>
+
+  <section id="view-scores" hidden>
+    <h2>Scoreboard</h2>
+    <div id="scores-note" class="muted"></div>
+    <div class="table-wrap"><table id="score-table"></table></div>
+    <button id="refresh">Refresh</button>
+  </section>
+</main>
+
+<dialog id="name-dialog">
+  <form method="dialog" id="name-form">
+    <h2>What's your name?</h2>
+    <p class="muted">Your wins are saved against this name on the scoreboard.</p>
+    <input id="name-input" maxlength="16" placeholder="Your name" autocomplete="nickname" autocorrect="off">
+    <button class="primary">Let's go</button>
+  </form>
+</dialog>
+
+<script src="config.js"></script>
+<script src="words.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
