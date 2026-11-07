@@ -231,7 +231,18 @@ async function loadScores() {
 
 /* ---------- rooms: 2-6 players, best-of series ---------- */
 let pollT = null, lobbyT = null, lobby = null, seriesLen = 1;
-const ROOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ", MAX_PLAYERS = 6;
+const ROOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+// "boards": up to 4 players, everyone sees everyone's colour boards.
+// "party":  up to 6 players, no boards, just a message saying who won each game.
+const ROOM_TYPES = {
+  boards: { max: 4, hint: "Up to 4 players. You see everyone's colour boards as they play." },
+  party: { max: 6, hint: "Up to 6 players. No boards, just a message saying who won each game." },
+};
+let roomType = "boards";
+function setRoomType(t) {
+  roomType = t; $("#roomtype-hint").textContent = ROOM_TYPES[t].hint;
+  document.querySelectorAll("#roomtype button").forEach((b) => b.classList.toggle("active", b.dataset.t === t));
+}
 const newPid = () => Math.random().toString(36).slice(2, 8);
 function duelMsg(m) { $("#duel-msg").textContent = m; }
 function setSeries(n) {
@@ -252,7 +263,7 @@ async function createRoom() {
     while (picked.size < seriesLen) picked.add(Math.floor(Math.random() * ANSWERS.length));
     const pid = newPid();
     await db("PUT", `rooms/${id}`, {
-      words: [...picked], games: seriesLen, host: pid, started: false, created: { ".sv": "timestamp" },
+      words: [...picked], games: seriesLen, host: pid, boards: roomType === "boards", maxPlayers: ROOM_TYPES[roomType].max, started: false, created: { ".sv": "timestamp" },
       players: { [pid]: { name: playerName } },
     });
     enterLobby(id, pid);
@@ -268,7 +279,8 @@ async function joinRoom(id) {
     if (!room) return duelMsg("No such room.");
     if (!room.words || !room.host) return duelMsg("That room is from an old version of the game.");
     if (room.started) return duelMsg("That game has already started.");
-    if (Object.keys(room.players || {}).length >= MAX_PLAYERS) return duelMsg(`That room is full (${MAX_PLAYERS} players).`);
+    const max = room.maxPlayers || 6;
+    if (Object.keys(room.players || {}).length >= max) return duelMsg(`That room is full (${max} players).`);
     const pid = newPid();
     await db("PUT", `rooms/${id}/players/${pid}`, { name: playerName });
     enterLobby(id, pid);
@@ -292,7 +304,7 @@ async function lobbyPoll() {
   if (room.started) return startFromLobby(room);
   const ps = room.players || {}, ids = Object.keys(ps);
   lobby.isHost = room.host === lobby.pid;
-  $("#lobby-info").textContent = `Best of ${room.games} · ${ids.length}/${MAX_PLAYERS} players`;
+  $("#lobby-info").textContent = `Best of ${room.games} · ${ids.length}/${room.maxPlayers || 6} players · ${room.boards === false ? "winner messages only" : "everyone's boards"}`;
   const ul = $("#lobby-players"); ul.innerHTML = "";
   ids.forEach((id) => {
     const li = document.createElement("li");
@@ -321,8 +333,9 @@ async function leaveRoom() {
 function startFromLobby(room) {
   const { id, pid } = lobby; lobby = null; stopLobbyPoll();
   const words = [...room.words], games = room.games || words.length;
-  newGame("duel", ANSWERS[words[0]], { room: id, pid, games, words, round: 0, rec: {}, seriesDone: false });
+  newGame("duel", ANSWERS[words[0]], { room: id, pid, games, words, round: 0, rec: {}, seriesDone: false, boards: room.boards !== false });
   $("#banner").textContent = "Game on! First to solve it wins.";
+  $("#opp-wrap").hidden = !g.boards;
   renderOpps([]);
   startPoll();
 }
@@ -381,7 +394,7 @@ async function poll() {
   const ps = room.players || {}, ids = Object.keys(ps), oppIds = ids.filter((k) => k !== g.pid);
   const nameOf = (id) => (id === g.pid ? "You" : (ps[id] && ps[id].name) || "Mate");
   const banner = $("#banner");
-  renderOpps(oppIds.map((id) => ({ name: nameOf(id), row: (ps[id].rounds || {})[g.round] })));
+  if (g.boards) renderOpps(oppIds.map((id) => ({ name: nameOf(id), row: (ps[id].rounds || {})[g.round] })));
 
   // series tally
   const wins = {}; ids.forEach((id) => (wins[id] = 0));
@@ -447,6 +460,8 @@ $("#again").onclick = () => {
   stopPoll(); if (g.mode === "duel") { duelMsg(""); showView("duel"); } else newSolo();
 };
 document.querySelectorAll("#series button").forEach((b) => (b.onclick = () => setSeries(+b.dataset.n)));
+document.querySelectorAll("#roomtype button").forEach((b) => (b.onclick = () => setRoomType(b.dataset.t)));
+setRoomType("boards");
 $("#create-room").onclick = createRoom;
 $("#start-game").onclick = startGame;
 $("#leave-room").onclick = leaveRoom;

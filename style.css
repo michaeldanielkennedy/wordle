@@ -84,7 +84,8 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 
 #banner:not([hidden]){display:flex;align-items:center;justify-content:center;min-height:52px}
 .series-pick{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 4px}
-#series{display:flex;gap:6px}
+#series,#roomtype{display:flex;gap:6px}
+#roomtype button{min-width:76px}
 #series button{min-width:44px}
 
 #lobby-code{font-size:48px;font-weight:800;letter-spacing:.25em;text-align:center;padding:8px 0 8px .25em}

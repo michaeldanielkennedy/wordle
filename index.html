@@ -44,7 +44,15 @@
 
   <section id="view-duel" hidden>
     <h2>Play with mates</h2>
-    <p class="muted">Up to 6 players, same secret word, 6 guesses each. First to solve it wins the game and ends it for everyone. You see the colours of everyone's guesses, not the letters.</p>
+    <p class="muted">Same secret word, 6 guesses each. First to solve it wins the game and ends it for everyone.</p>
+    <div class="series-pick">
+      <span class="muted">Room type</span>
+      <div id="roomtype">
+        <button type="button" data-t="boards" class="active">Up to 4</button>
+        <button type="button" data-t="party">Up to 6</button>
+      </div>
+    </div>
+    <p class="muted" id="roomtype-hint"></p>
     <div class="series-pick">
       <span class="muted">Number of games</span>
       <div id="series">
