@@ -26,23 +26,29 @@ h2{margin:8px 0}
 #toast.show{opacity:1}
 #banner{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;text-align:center;font-size:14px}
 #boards{display:flex;gap:16px;justify-content:center;align-items:flex-start;flex:1;min-height:0}
-#board,#opp-board{display:grid;grid-template-rows:repeat(6,1fr);gap:5px}
+#board{display:grid;grid-template-rows:repeat(6,1fr);gap:5px}
 #board{width:min(100%,calc((100dvh - 330px)*0.8),340px);max-height:100%;align-self:center}
 #opp-wrap{width:90px;text-align:center}
-#opp-name{font-size:12px;color:var(--muted);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#opp-board{gap:3px}
+#opp-wrap.many{width:104px}
+#opps{display:grid;grid-template-columns:1fr;gap:10px}
+#opp-wrap.many #opps{grid-template-columns:1fr 1fr;gap:8px 5px}
+.opp-name{font-size:12px;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.many .opp-name{font-size:10px}
+.mini{display:grid;grid-template-rows:repeat(6,1fr);gap:3px}
+.many .mini{gap:2px}
 .row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
-#opp-board .row{gap:3px}
+.mini .row{gap:3px}
+.many .mini .row{gap:2px}
 .tile{aspect-ratio:1;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;
   font-size:clamp(22px,8vw,32px);font-weight:800;text-transform:uppercase;user-select:none}
-#opp-board .tile{border-width:0;background:#242426;border-radius:2px}
+.mini .tile{border-width:0;background:#242426;border-radius:2px}
 .tile.filled{border-color:#6a6a6c;animation:pop .1s}
 .tile.correct{background:var(--green);border-color:var(--green)}
 .tile.present{background:var(--yellow);border-color:var(--yellow)}
 .tile.absent{background:var(--grey);border-color:var(--grey)}
-#opp-board .tile.correct{background:var(--green)}
-#opp-board .tile.present{background:var(--yellow)}
-#opp-board .tile.absent{background:var(--grey)}
+.mini .tile.correct{background:var(--green)}
+.mini .tile.present{background:var(--yellow)}
+.mini .tile.absent{background:var(--grey)}
 .tile.flip{animation:flip .25s both}
 .row.shake{animation:shake .4s}
 @keyframes pop{50%{transform:scale(1.1)}}
@@ -80,3 +86,11 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 .series-pick{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 4px}
 #series{display:flex;gap:6px}
 #series button{min-width:44px}
+
+#lobby-code{font-size:48px;font-weight:800;letter-spacing:.25em;text-align:center;padding:8px 0 8px .25em}
+#lobby-players{list-style:none;margin:8px 0;padding:0}
+#lobby-players li{display:flex;justify-content:space-between;padding:10px 12px;margin-bottom:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+#lobby-players li .tag{color:var(--muted);font-size:13px}
+#start-game{margin:8px 0}
+#start-game:disabled{opacity:.4}
+#view-lobby > button{width:100%;margin-top:6px}
