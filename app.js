@@ -1,5 +1,5 @@
 "use strict";
-const ROWS = 5, COLS = 5;
+const ROWS = 6, COLS = 5;
 const DB = ((window.WORDLE_CONFIG || {}).databaseURL || "").replace(/\/$/, "");
 const ONLINE = !!DB;
 const $ = (s) => document.querySelector(s);
@@ -158,7 +158,7 @@ async function finish(won) {
   if (g.over) return;
   g.over = true;
   if (g.mode === "solo") {
-    toast(won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Phew!"][g.guesses.length - 1] : g.target.toUpperCase(), 3000);
+    toast(won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][g.guesses.length - 1] : g.target.toUpperCase(), 3000);
     $("#after").hidden = false;
     await recordResult(won, false);
   } else {

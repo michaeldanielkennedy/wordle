@@ -1,9 +1,9 @@
 # Wordle with Mates
 
-5-letter word game, 5 guesses. Yellow = right letter wrong place, green = right place, grey = not in the word. On-screen keyboard tracks your letters. ~14,800 accepted words; answers come from ~2,300 common ones.
+5-letter word game, 6 guesses. Yellow = right letter wrong place, green = right place, grey = not in the word. On-screen keyboard tracks your letters. ~14,800 accepted words; answers come from ~2,300 common ones.
 
 - **Scoreboard** – every word you solve is saved against your name; see your mates' totals.
-- **1v1** – create a room, send the 4-letter code to a mate, same secret word, first to solve wins.
+- **1v1** – create a room, send the 4-letter code to a mate, same secret word, 6 guesses each, first to solve wins.
 - **Works on phones** – just open the site in Safari / Chrome. Use "Add to Home Screen" for a full-screen app feel.
 
 ## Play locally
