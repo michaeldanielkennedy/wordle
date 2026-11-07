@@ -57,6 +57,8 @@ h2{margin:8px 0}
 .key.present{background:var(--yellow)}
 .key.absent{background:#2a2a2c;color:#888}
 #after{text-align:center;padding-bottom:8px}
+/* keep the Play again slot reserved so the layout never jumps when it appears */
+#after[hidden]{display:block;visibility:hidden}
 .or{text-align:center;color:var(--muted);margin:16px 0}
 input{font:inherit;font-size:16px;color:var(--text);background:var(--panel);border:1px solid var(--line);
   border-radius:8px;padding:10px 12px;width:100%}
