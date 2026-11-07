@@ -45,7 +45,17 @@
 
   <section id="view-duel" hidden>
     <h2>1v1 duel</h2>
-    <p class="muted">Same secret word, 6 guesses each. First to solve it wins. You only see the colours of your mate's guesses, not the letters.</p>
+    <p class="muted">Same secret word, 6 guesses each. First to solve it wins the game. You only see the colours of your mate's guesses, not the letters.</p>
+    <div class="series-pick">
+      <span class="muted">Number of games</span>
+      <div id="series">
+        <button type="button" data-n="1" class="active">1</button>
+        <button type="button" data-n="3">3</button>
+        <button type="button" data-n="5">5</button>
+        <button type="button" data-n="7">7</button>
+      </div>
+    </div>
+    <p class="muted" id="series-hint">Best of the series: first to win more than half takes the match (best of 5 = first to 3).</p>
     <button id="create-room" class="primary">Create a room</button>
     <div class="or">or join a mate</div>
     <form id="join-form">

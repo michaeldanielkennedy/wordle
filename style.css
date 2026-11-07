@@ -43,7 +43,7 @@ h2{margin:8px 0}
 #opp-board .tile.correct{background:var(--green)}
 #opp-board .tile.present{background:var(--yellow)}
 #opp-board .tile.absent{background:var(--grey)}
-.tile.flip{animation:flip .5s both}
+.tile.flip{animation:flip .25s both}
 .row.shake{animation:shake .4s}
 @keyframes pop{50%{transform:scale(1.1)}}
 @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
@@ -75,3 +75,8 @@ dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);bo
 dialog::backdrop{background:rgba(0,0,0,.7)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 @media (max-height:640px){.key{height:46px}}
+
+#banner:not([hidden]){display:flex;align-items:center;justify-content:center;min-height:52px}
+.series-pick{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 4px}
+#series{display:flex;gap:6px}
+#series button{min-width:44px}

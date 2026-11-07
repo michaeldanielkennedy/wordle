@@ -64,7 +64,7 @@ function newGame(mode, target, extra = {}) {
   g = { mode, target, guesses: [], cur: "", over: false, keys: {}, ...extra };
   buildBoard($("#board"), true);
   buildKeyboard();
-  $("#after").hidden = true;
+  $("#after").hidden = true; $("#again").textContent = "Play again";
   $("#opp-wrap").hidden = mode !== "duel";
   $("#banner").hidden = mode !== "duel";
   showView("game");
@@ -149,10 +149,10 @@ async function submit() {
   g.secs = (Date.now() - (g.start || Date.now())) / 1000;
   g.guesses.push({ guess, res }); g.cur = ""; busy = true;
   [...row.children].forEach((t, i) => {
-    t.style.animationDelay = i * 0.25 + "s"; t.classList.add("flip");
-    setTimeout(() => { t.classList.remove("filled"); t.classList.add(res[i]); }, i * 250 + 250);
+    t.style.animationDelay = i * 0.125 + "s"; t.classList.add("flip");
+    setTimeout(() => { t.classList.remove("filled"); t.classList.add(res[i]); }, i * 125 + 125);
   });
-  await new Promise((r) => setTimeout(r, COLS * 250 + 300));
+  await new Promise((r) => setTimeout(r, COLS * 125 + 150));
   res.forEach((r, i) => { if ((rank[r] || 0) > (rank[g.keys[guess[i]]] || 0)) g.keys[guess[i]] = r; });
   paintKeys(); busy = false;
   const won = guess === g.target, lost = !won && g.guesses.length >= ROWS;
@@ -229,10 +229,14 @@ async function loadScores() {
   });
 }
 
-/* ---------- 1v1 duel ---------- */
-let pollT = null;
+/* ---------- 1v1 duel: best-of series ---------- */
+let pollT = null, seriesLen = 1;
 const ROOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 function duelMsg(m) { $("#duel-msg").textContent = m; }
+function setSeries(n) {
+  seriesLen = n;
+  document.querySelectorAll("#series button").forEach((b) => b.classList.toggle("active", +b.dataset.n === n));
+}
 
 async function createRoom() {
   if (!ONLINE) return duelMsg("1v1 needs the online scoreboard set up first. See README.");
@@ -243,7 +247,9 @@ async function createRoom() {
       id = Array.from({ length: 4 }, () => ROOM_CHARS[Math.floor(Math.random() * ROOM_CHARS.length)]).join("");
       if ((await db("GET", `rooms/${id}`)) === null) break;
     }
-    await db("PUT", `rooms/${id}`, { idx: Math.floor(Math.random() * ANSWERS.length), created: { ".sv": "timestamp" } });
+    const picked = new Set();
+    while (picked.size < seriesLen) picked.add(Math.floor(Math.random() * ANSWERS.length));
+    await db("PUT", `rooms/${id}`, { words: [...picked], games: seriesLen, created: { ".sv": "timestamp" } });
     await joinRoom(id);
   } catch { duelMsg("Couldn't create room. Check your connection."); }
 }
@@ -256,10 +262,12 @@ async function joinRoom(id) {
     const room = await db("GET", `rooms/${id}`);
     if (!room) return duelMsg("No such room.");
     if (Object.keys(room.players || {}).length >= 2) return duelMsg("That room is full.");
+    const words = room.words || [], games = room.games || words.length || 1;
+    if (!words.length) return duelMsg("That room is from an old version of the game.");
     const pid = Math.random().toString(36).slice(2, 8);
-    await db("PUT", `rooms/${id}/players/${pid}`, { name: playerName, rows: "", status: "playing" });
-    newGame("duel", ANSWERS[room.idx], { room: id, pid, opp: null, recorded: false });
-    $("#banner").textContent = `Room ${id}: waiting for a mate to join… share the code!`;
+    await db("PUT", `rooms/${id}/players/${pid}`, { name: playerName });
+    newGame("duel", ANSWERS[words[0]], { room: id, pid, games, words: [...words], round: 0, rec: {}, seriesDone: false });
+    $("#banner").textContent = `Room ${id}: best of ${games}. Waiting for a mate to join… share the code!`;
     $("#opp-name").textContent = "Waiting…"; buildBoard($("#opp-board"));
     startPoll();
   } catch { duelMsg("Couldn't join room. Check your connection."); }
@@ -268,38 +276,85 @@ function startPoll() { stopPoll(); pollT = setInterval(poll, 1500); poll(); }
 function stopPoll() { clearInterval(pollT); pollT = null; }
 
 async function duelPush(status) {
-  const body = { name: playerName, rows: g.guesses.map((x) => code(x.res)).join(","), status };
+  const body = { rows: g.guesses.map((x) => code(x.res)).join(","), status };
   if (status !== "playing") body.finishedAt = { ".sv": "timestamp" };
-  try { await db("PUT", `rooms/${g.room}/players/${g.pid}`, body); } catch { toast("Connection hiccup"); }
+  try { await db("PUT", `rooms/${g.room}/players/${g.pid}/rounds/${g.round}`, body); } catch { toast("Connection hiccup"); }
 }
+
+// Result of one game from my point of view: "win" | "lose" | "draw" | null (not decided yet)
+function roundResult(m, o, myId, oppId) {
+  const mw = m && m.status === "won", ow = o && o.status === "won";
+  if (mw && ow) {
+    const a = m.finishedAt || 0, b = o.finishedAt || 0;
+    return a !== b ? (a < b ? "win" : "lose") : (myId < oppId ? "win" : "lose");
+  }
+  if (mw) return "win";
+  if (ow) return "lose";
+  if (m && o && m.status === "lost" && o.status === "lost") return "draw";
+  return null;
+}
+
 async function poll() {
   if (!g || g.mode !== "duel") return stopPoll();
   let room; try { room = await db("GET", `rooms/${g.room}`); } catch { return; }
-  if (!room || !g || g.mode !== "duel") return;
-  const ps = room.players || {}, me = ps[g.pid];
+  if (!room || !g || g.mode !== "duel" || g.seriesDone) return;
+  const ps = room.players || {}, me = ps[g.pid] || {};
   const oppId = Object.keys(ps).find((k) => k !== g.pid), opp = oppId ? ps[oppId] : null;
   const banner = $("#banner");
-  if (!opp) { banner.textContent = `Room ${g.room}: waiting for a mate to join… share the code!`; return; }
-  $("#opp-name").textContent = opp.name || "Mate";
-  const rows = opp.rows ? opp.rows.split(",") : [];
+  if (!opp) { banner.textContent = `Room ${g.room}: best of ${g.games}. Waiting for a mate to join… share the code!`; return; }
+  const oppName = opp.name || "Mate";
+  $("#opp-name").textContent = oppName;
+  const mr = me.rounds || {}, or = opp.rounds || {};
+
+  // opponent's board for the current game
+  const orow = or[g.round], rows = orow && orow.rows ? orow.rows.split(",") : [];
   buildBoard($("#opp-board"));
   rows.forEach((s, i) => decode(s).forEach((cl, j) => $("#opp-board").children[i].children[j].classList.add(cl)));
-  if (!g.over) banner.textContent = `${opp.name} has made ${rows.length} guess${rows.length === 1 ? "" : "es"}`;
 
-  // Work out the result
-  let result = null;
-  const mw = me && me.status === "won", ow = opp.status === "won";
-  if (mw && ow) result = (me.finishedAt || 0) <= (opp.finishedAt || 0) ? "win" : "lose";
-  else if (mw) result = "win";
-  else if (ow) result = "lose";
-  else if (me && me.status === "lost" && opp.status === "lost") result = "draw";
-  if (!result) return;
-  if (g.recorded) return;
-  g.recorded = true; stopPoll();
-  if (!g.over) { g.over = true; toast(`${opp.name} got it first! It was ${g.target.toUpperCase()}`, 3500); }
-  banner.textContent = result === "win" ? "🏆 You win!" : result === "lose" ? `😬 ${opp.name} wins. The word was ${g.target.toUpperCase()}` : `🤝 Draw. The word was ${g.target.toUpperCase()}`;
-  if (result === "win") await recordDuelWin(); else await recordDuelLoss();
-  $("#after").hidden = false;
+  // series tally
+  const need = Math.ceil(g.games / 2);
+  let w = 0, l = 0, resolved = 0; const results = [];
+  for (let r = 0; r < g.games; r++) {
+    const res = roundResult(mr[r], or[r], g.pid, oppId);
+    results[r] = res; if (res === "win") w++; else if (res === "lose") l++; if (res) resolved++;
+  }
+  const seriesOver = w >= need || l >= need || resolved === g.games;
+  const prefix = g.games > 1 ? `Game ${g.round + 1}/${g.games} · You ${w}–${l} ${oppName} · ` : "";
+  const word = g.target.toUpperCase();
+
+  if (seriesOver) {
+    g.seriesDone = true; stopPoll();
+    if (!g.over) { g.over = true; toast(`It was ${word}`, 3000); }
+    const tail = ` The word was ${word}.`;
+    banner.textContent = w > l
+      ? (g.games > 1 ? `🏆 You win the match ${w}–${l}!` : "🏆 You win!")
+      : l > w
+        ? (g.games > 1 ? `😬 ${oppName} wins the match ${l}–${w}.` : `😬 ${oppName} wins.`) + tail
+        : `🤝 ${g.games > 1 ? `Match drawn ${w}–${l}.` : "Draw."}` + tail;
+    if (w > l) await recordDuelWin(); else await recordDuelLoss();
+    $("#again").textContent = "Play again"; $("#after").hidden = false;
+    return;
+  }
+
+  const cur = results[g.round];
+  if (cur && !g.rec[g.round]) {
+    g.rec[g.round] = true;
+    if (!g.over) { g.over = true; toast(`${oppName} got it first! It was ${word}`, 3500); }
+    $("#again").textContent = "Next game"; $("#after").hidden = false;
+  }
+  if (g.rec[g.round]) {
+    banner.textContent = prefix + (cur === "win" ? "You won this game!" : cur === "lose" ? `${oppName} won this game. It was ${word}.` : `Nobody got it. It was ${word}.`);
+  } else {
+    banner.textContent = prefix + `${oppName} has made ${rows.length} guess${rows.length === 1 ? "" : "es"}`;
+  }
+}
+
+function nextRound() {
+  g.round++; g.target = ANSWERS[g.words[g.round]];
+  g.guesses = []; g.cur = ""; g.over = false; g.keys = {}; g.start = null; g.secs = 0;
+  buildBoard($("#board"), true); buildKeyboard(); buildBoard($("#opp-board"));
+  $("#after").hidden = true;
+  poll();
 }
 
 /* ---------- navigation ---------- */
@@ -309,10 +364,14 @@ function showView(v) {
   if (v === "scores") loadScores();
 }
 document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => {
-  if (b.dataset.view === "game" && g && g.mode === "duel" && !g.recorded) { showView("game"); return; }
+  if (b.dataset.view === "game" && g && g.mode === "duel" && !g.seriesDone) { showView("game"); return; }
   showView(b.dataset.view);
 }));
-$("#again").onclick = () => { stopPoll(); if (g.mode === "duel") { duelMsg(""); showView("duel"); } else newSolo(); };
+$("#again").onclick = () => {
+  if (g.mode === "duel" && !g.seriesDone) return nextRound();
+  stopPoll(); if (g.mode === "duel") { duelMsg(""); showView("duel"); } else newSolo();
+};
+document.querySelectorAll("#series button").forEach((b) => (b.onclick = () => setSeries(+b.dataset.n)));
 $("#create-room").onclick = createRoom;
 $("#join-form").onsubmit = (e) => { e.preventDefault(); joinRoom($("#room-code").value); };
 $("#refresh").onclick = loadScores;
