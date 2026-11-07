@@ -2,5 +2,5 @@
 // See README.md ("Set up the scoreboard") - takes about 3 minutes.
 // Example: "https://my-wordle-default-rtdb.europe-west1.firebasedatabase.app"
 window.WORDLE_CONFIG = {
-  databaseURL: ""
+  databaseURL: "https://scores-7ddbc-default-rtdb.europe-west1.firebasedatabase.app"
 };
