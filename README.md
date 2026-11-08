@@ -1,4 +1,4 @@
-# Wordle with Mates
+# Wordie with Mates
 
 5-letter word game, 6 guesses. Yellow = right letter wrong place, green = right place, grey = not in the word. On-screen keyboard tracks your letters. ~14,800 accepted words; answers come from ~2,300 common ones.
 
