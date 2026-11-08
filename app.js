@@ -1,6 +1,6 @@
 "use strict";
 const ROWS = 6, COLS = 5;
-const DB = ((window.WORDLE_CONFIG || {}).databaseURL || "").replace(/\/$/, "");
+const DB = ((window.WORDIE_CONFIG || {}).databaseURL || "").replace(/\/$/, "");
 const ONLINE = !!DB;
 const $ = (s) => document.querySelector(s);
 const store = {
