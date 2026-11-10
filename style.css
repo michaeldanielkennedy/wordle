@@ -29,7 +29,7 @@ h2{margin:8px 0}
 #board{display:grid;grid-template-rows:repeat(6,1fr);gap:5px}
 #board{width:min(100%,calc((100dvh - 330px)*0.8),340px);max-height:100%;align-self:center}
 #opp-wrap{width:90px;text-align:center}
-#opp-wrap.many{width:104px}
+#opp-wrap.many{width:124px}
 #opps{display:grid;grid-template-columns:1fr;gap:10px}
 #opp-wrap.many #opps{grid-template-columns:1fr 1fr;gap:8px 5px}
 .opp-name{font-size:12px;color:var(--muted);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -84,8 +84,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 
 #banner:not([hidden]){display:flex;align-items:center;justify-content:center;min-height:52px}
 .series-pick{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 4px}
-#series,#roomtype{display:flex;gap:6px}
-#roomtype button{min-width:76px}
+#series{display:flex;gap:6px}
 #series button{min-width:44px}
 
 #lobby-code{font-size:48px;font-weight:800;letter-spacing:.25em;text-align:center;padding:8px 0 8px .25em}

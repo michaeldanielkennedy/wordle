@@ -232,17 +232,8 @@ async function loadScores() {
 /* ---------- rooms: 2-6 players, best-of series ---------- */
 let pollT = null, lobbyT = null, lobby = null, seriesLen = 1;
 const ROOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-// "boards": up to 4 players, everyone sees everyone's colour boards.
-// "party":  up to 6 players, no boards, just a message saying who won each game.
-const ROOM_TYPES = {
-  boards: { max: 4, hint: "Up to 4 players. You see everyone's colour boards as they play." },
-  party: { max: 6, hint: "Up to 6 players. No boards, just a message saying who won each game." },
-};
-let roomType = "boards";
-function setRoomType(t) {
-  roomType = t; $("#roomtype-hint").textContent = ROOM_TYPES[t].hint;
-  document.querySelectorAll("#roomtype button").forEach((b) => b.classList.toggle("active", b.dataset.t === t));
-}
+// Up to 6 players: your board plus up to 5 mini boards in a 2-column grid.
+const MAX_PLAYERS = 6, NEXT_DELAY = 5;
 const newPid = () => Math.random().toString(36).slice(2, 8);
 function duelMsg(m) { $("#duel-msg").textContent = m; }
 function setSeries(n) {
@@ -263,7 +254,7 @@ async function createRoom() {
     while (picked.size < seriesLen) picked.add(Math.floor(Math.random() * ANSWERS.length));
     const pid = newPid();
     await db("PUT", `rooms/${id}`, {
-      words: [...picked], games: seriesLen, host: pid, boards: roomType === "boards", maxPlayers: ROOM_TYPES[roomType].max, started: false, created: { ".sv": "timestamp" },
+      words: [...picked], games: seriesLen, host: pid, maxPlayers: MAX_PLAYERS, started: false, created: { ".sv": "timestamp" },
       players: { [pid]: { name: playerName } },
     });
     enterLobby(id, pid);
@@ -279,7 +270,7 @@ async function joinRoom(id) {
     if (!room) return duelMsg("No such room.");
     if (!room.words || !room.host) return duelMsg("That room is from an old version of the game.");
     if (room.started) return duelMsg("That game has already started.");
-    const max = room.maxPlayers || 6;
+    const max = room.maxPlayers || MAX_PLAYERS;
     if (Object.keys(room.players || {}).length >= max) return duelMsg(`That room is full (${max} players).`);
     const pid = newPid();
     await db("PUT", `rooms/${id}/players/${pid}`, { name: playerName });
@@ -304,7 +295,7 @@ async function lobbyPoll() {
   if (room.started) return startFromLobby(room);
   const ps = room.players || {}, ids = Object.keys(ps);
   lobby.isHost = room.host === lobby.pid;
-  $("#lobby-info").textContent = `Best of ${room.games} · ${ids.length}/${room.maxPlayers || 6} players · ${room.boards === false ? "winner messages only" : "everyone's boards"}`;
+  $("#lobby-info").textContent = `Best of ${room.games} · ${ids.length}/${room.maxPlayers || MAX_PLAYERS} players`;
   const ul = $("#lobby-players"); ul.innerHTML = "";
   ids.forEach((id) => {
     const li = document.createElement("li");
@@ -333,7 +324,7 @@ async function leaveRoom() {
 function startFromLobby(room) {
   const { id, pid } = lobby; lobby = null; stopLobbyPoll();
   const words = [...room.words], games = room.games || words.length;
-  newGame("duel", ANSWERS[words[0]], { room: id, pid, games, words, round: 0, rec: {}, seriesDone: false, boards: room.boards !== false });
+  newGame("duel", ANSWERS[words[0]], { room: id, pid, games, words, round: 0, rec: {}, seriesDone: false, boards: true });
   $("#banner").textContent = "Game on! First to solve it wins.";
   $("#opp-wrap").hidden = !g.boards;
   renderOpps([]);
@@ -365,10 +356,10 @@ function outcome(ps, r) {
   return null;
 }
 
-// Mini boards of the other players. With 3+ opponents they shrink into a 2-column grid.
+// Mini boards of the other players. With 2+ opponents they shrink into a 2-column grid.
 function renderOpps(list) {
   const wrap = $("#opp-wrap"), box = $("#opps");
-  wrap.classList.toggle("many", list.length >= 3);
+  wrap.classList.toggle("many", list.length >= 2);
   box.innerHTML = "";
   list.forEach((o) => {
     const d = document.createElement("div"); d.className = "opp";
@@ -408,7 +399,7 @@ async function poll() {
   const word = g.target.toUpperCase();
 
   if (seriesOver) {
-    g.seriesDone = true; stopPoll();
+    g.seriesDone = true; stopPoll(); clearAdvance();
     if (!g.over) { g.over = true; toast(`It was ${word}`, 3000); }
     const winners = top > 0 ? ids.filter((id) => wins[id] === top) : [];
     const tail = ` The word was ${word}.`, many = g.games > 1;
@@ -428,16 +419,28 @@ async function poll() {
     g.rec[g.round] = true;
     if (!g.over) { g.over = true; toast(`${nameOf(cur)} got it first! It was ${word}`, 3500); }
     $("#again").textContent = "Next game"; $("#after").hidden = false;
+    startAdvance();
   }
   const prefix = g.games > 1 ? `Game ${g.round + 1}/${g.games} · ${scoreLine(ids, wins, nameOf)} · ` : "";
   if (g.rec[g.round]) {
-    banner.textContent = prefix + (cur === g.pid ? "You won this game!" : cur === "draw" ? `Nobody got it. It was ${word}.` : `${nameOf(cur)} won this game. It was ${word}.`);
+    const wait = g.adv ? ` Next game in ${Math.max(0, Math.ceil((g.adv.at - Date.now()) / 1000))}s…` : "";
+    banner.textContent = prefix + (cur === g.pid ? "You won this game!" : cur === "draw" ? `Nobody got it. It was ${word}.` : `${nameOf(cur)} won this game. It was ${word}.`) + wait;
   } else {
     banner.textContent = prefix + "First to solve it wins!";
   }
 }
 
+// After a game is decided, move everyone on to the next one automatically.
+function clearAdvance() { if (g && g.adv) { clearTimeout(g.adv.t); clearInterval(g.adv.tick); g.adv = null; } }
+function startAdvance() {
+  clearAdvance();
+  const round = g.round;
+  g.adv = { at: Date.now() + NEXT_DELAY * 1000 };
+  g.adv.t = setTimeout(() => { if (g && g.mode === "duel" && g.round === round && !g.seriesDone) nextRound(); }, NEXT_DELAY * 1000);
+  g.adv.tick = setInterval(() => { if (g && g.adv) poll(); }, 1000);
+}
 function nextRound() {
+  clearAdvance();
   g.round++; g.target = ANSWERS[g.words[g.round]];
   g.guesses = []; g.cur = ""; g.over = false; g.keys = {}; g.start = null; g.secs = 0;
   buildBoard($("#board"), true); buildKeyboard(); $("#opps").innerHTML = "";
@@ -460,8 +463,6 @@ $("#again").onclick = () => {
   stopPoll(); if (g.mode === "duel") { duelMsg(""); showView("duel"); } else newSolo();
 };
 document.querySelectorAll("#series button").forEach((b) => (b.onclick = () => setSeries(+b.dataset.n)));
-document.querySelectorAll("#roomtype button").forEach((b) => (b.onclick = () => setRoomType(b.dataset.t)));
-setRoomType("boards");
 $("#create-room").onclick = createRoom;
 $("#start-game").onclick = startGame;
 $("#leave-room").onclick = leaveRoom;
