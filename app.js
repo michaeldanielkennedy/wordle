@@ -94,11 +94,12 @@ function buildKeyboard() {
   const kb = $("#keyboard"); kb.innerHTML = "";
   ["qwertyuiop", "asdfghjkl", "zxcvbnm"].forEach((letters, i) => {
     const row = document.createElement("div"); row.className = "krow";
-    if (i === 2) row.appendChild(mkKey("enter", "Enter", true));
     for (const ch of letters) row.appendChild(mkKey(ch, ch));
     if (i === 2) row.appendChild(mkKey("back", "⌫", true));
     kb.appendChild(row);
   });
+  const bar = $("#enter-bar"); bar.innerHTML = "";
+  const en = mkKey("enter", "Enter"); en.classList.add("enter"); bar.appendChild(en);
 }
 function mkKey(k, label, wide) {
   const b = document.createElement("button");
