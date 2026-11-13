@@ -90,6 +90,9 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 #series button{min-width:44px}
 
 #lobby-code{font-size:48px;font-weight:800;letter-spacing:.25em;text-align:center;padding:8px 0 8px .25em}
+#lobby-qr{width:min(220px,60vw);margin:4px auto;background:#fff;border-radius:10px;padding:4px;line-height:0}
+#lobby-qr svg{width:100%;height:auto}
+.qr-hint{text-align:center;margin-top:4px}
 #lobby-players{list-style:none;margin:8px 0;padding:0}
 #lobby-players li{display:flex;justify-content:space-between;padding:10px 12px;margin-bottom:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
 #lobby-players li .tag{color:var(--muted);font-size:13px}

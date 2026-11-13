@@ -70,6 +70,8 @@
     <h2>Waiting room</h2>
     <p class="muted">Share this code with your mates:</p>
     <div id="lobby-code"></div>
+    <div id="lobby-qr" aria-label="QR code to join this room"></div>
+    <p class="muted qr-hint">…or have them scan this to join instantly.</p>
     <p class="muted" id="lobby-info"></p>
     <ul id="lobby-players"></ul>
     <p id="lobby-msg" class="muted"></p>
@@ -85,6 +87,14 @@
   </section>
 </main>
 
+<dialog id="join-dialog">
+  <form method="dialog" id="join-prompt">
+    <h2>Join room <span id="join-code"></span></h2>
+    <p class="muted">Tap to jump in. Full screen where your browser allows it.</p>
+    <button class="primary" id="join-go">Join game</button>
+  </form>
+</dialog>
+
 <dialog id="name-dialog">
   <form method="dialog" id="name-form">
     <h2>What's your name?</h2>
@@ -95,6 +105,7 @@
 </dialog>
 
 <script src="config.js?v=3"></script>
+<script src="qrcode.js?v=3"></script>
 <script src="words.js?v=3"></script>
 <script src="app.js?v=3"></script>
 </body>

@@ -284,8 +284,20 @@ function enterLobby(id, pid) {
   lobby = { id, pid, isHost: false };
   $("#lobby-code").textContent = id; $("#lobby-msg").textContent = "";
   $("#lobby-info").textContent = ""; $("#lobby-players").innerHTML = ""; $("#start-game").hidden = true;
+  renderQR(id);
   showView("lobby");
   clearInterval(lobbyT); lobbyT = setInterval(lobbyPoll, 1500); lobbyPoll();
+}
+const joinURL = (id) => location.origin + location.pathname + "?room=" + id;
+function renderQR(id) {
+  try {
+    const qr = qrcode(0, "M"); qr.addData(joinURL(id)); qr.make();
+    $("#lobby-qr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 3, scalable: true });
+  } catch { $("#lobby-qr").innerHTML = ""; }
+}
+function goFullscreen() {
+  const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen;
+  try { if (f && !document.fullscreenElement) Promise.resolve(f.call(el)).catch(() => {}); } catch {}
 }
 function stopLobbyPoll() { clearInterval(lobbyT); lobbyT = null; }
 async function lobbyPoll() {
@@ -471,4 +483,12 @@ $("#join-form").onsubmit = (e) => { e.preventDefault(); joinRoom($("#room-code")
 $("#refresh").onclick = loadScores;
 
 newSolo();
-if (!playerName) setTimeout(askName, 300);
+// Opened from a QR code / link: ?room=ABCD -> one-tap join (the tap also lets us request fullscreen)
+const linkRoom = (new URLSearchParams(location.search).get("room") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+if (linkRoom.length === 4) {
+  history.replaceState(null, "", location.pathname);
+  showView("duel"); $("#room-code").value = linkRoom;
+  $("#join-code").textContent = linkRoom;
+  $("#join-prompt").onsubmit = () => { goFullscreen(); joinRoom(linkRoom); };
+  $("#join-dialog").showModal();
+} else if (!playerName) setTimeout(askName, 300);
