@@ -3,6 +3,6 @@
 if git diff --cached --name-only | grep -qE '^(app|words|config)\.js$|^style\.css$'; then
   cur=$(grep -o 'app.js?v=[0-9]*' index.html | grep -o '[0-9]*$')
   new=$(( ${cur:-0} + 1 ))
-  sed -i.bak -E "s/\?v=[0-9]+/?v=$new/g" index.html && rm -f index.html.bak
+  sed -i.bak -E "s/\?v=[0-9]+/?v=$new/g; s/(id=\"ver\"[^>]*>)v[0-9]+/\\1v$new/" index.html && rm -f index.html.bak
   git add index.html
 fi
