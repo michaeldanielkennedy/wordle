@@ -174,20 +174,20 @@ async function finish(won) {
   }
   toast(msg, 3500);
   if (g.mode === "solo") $("#after").hidden = false;
-  await recordResult(won, pts, n);
+  await recordResult(won, pts, n, g.secs);
 }
 
 /* ---------- scores ---------- */
-async function recordResult(solved, pts, guesses) {
+async function recordResult(solved, pts, guesses, secs) {
   const name = await ensureName(); if (!name) return;
   // local copy always kept
   const mine = store.get("local-score", { name, wins: 0, played: 0, points: 0, guessTotal: 0 });
   mine.name = name; mine.played++;
-  if (solved) { mine.wins++; mine.points = (mine.points || 0) + pts; mine.guessTotal = (mine.guessTotal || 0) + guesses; }
+  if (solved) { mine.wins++; mine.points = (mine.points || 0) + pts; mine.guessTotal = (mine.guessTotal || 0) + guesses; mine.secsTotal = (mine.secsTotal || 0) + Math.round(secs); mine.timedWins = (mine.timedWins || 0) + 1; }
   store.set("local-score", mine);
   if (!ONLINE) return;
   const patch = { name, played: INC };
-  if (solved) { patch.wins = INC; patch.points = inc(pts); patch.guessTotal = inc(guesses); }
+  if (solved) { patch.wins = INC; patch.points = inc(pts); patch.guessTotal = inc(guesses); patch.secsTotal = inc(Math.round(secs)); patch.timedWins = INC; }
   try { await db("PATCH", `scores/${keyOf(name)}`, patch); if (solved) toast(`+${pts} pts saved to scoreboard ✔`); }
   catch { toast("Couldn't reach scoreboard"); }
 }
@@ -216,14 +216,15 @@ async function loadScores() {
   rows.forEach((r) => {
     r.wins = r.wins || 0; r.played = r.played || 0; r.duelWins = r.duelWins || 0; r.duels = r.duels || 0;
     r.points = r.points || 0; r.avg = r.wins && r.guessTotal ? r.guessTotal / r.wins : null;
+    r.avgSecs = r.timedWins && r.secsTotal ? r.secsTotal / r.timedWins : null;
   });
   rows.sort((a, b) => b.points - a.points || b.wins - a.wins || (a.avg ?? 99) - (b.avg ?? 99));
-  tbl.innerHTML = "<tr><th>#</th><th>Name</th><th>Pts</th><th>Solved</th><th>Avg</th><th>Match W</th></tr>";
-  if (!rows.length) tbl.innerHTML += '<tr><td colspan="6" class="muted" style="text-align:center">No scores yet. Go win something!</td></tr>';
+  tbl.innerHTML = "<tr><th>#</th><th>Name</th><th>Pts</th><th>Solved</th><th>Avg</th><th>Avg s</th><th>Match W</th></tr>";
+  if (!rows.length) tbl.innerHTML += '<tr><td colspan="7" class="muted" style="text-align:center">No scores yet. Go win something!</td></tr>';
   rows.forEach((r, i) => {
     const tr = document.createElement("tr");
     if (playerName && keyOf(r.name || "") === keyOf(playerName)) tr.className = "me";
-    [i + 1, r.name || "?", r.points, `${r.wins}/${r.played}`, r.avg ? r.avg.toFixed(1) : "-", `${r.duelWins}/${r.duels}`].forEach((v) => {
+    [i + 1, r.name || "?", r.points, `${r.wins}/${r.played}`, r.avg ? r.avg.toFixed(1) : "-", r.avgSecs ? Math.round(r.avgSecs) : "-", `${r.duelWins}/${r.duels}`].forEach((v) => {
       const td = document.createElement("td"); td.textContent = v; if (tr.className) td.className = "me"; tr.appendChild(td);
     });
     tbl.appendChild(tr);
